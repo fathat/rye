@@ -1,0 +1,51 @@
+STRING: "\\"[^\\\\"]*\\"";
+NUMBER: "\-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][\+\-]?[0-9]+)?";
+IGNORE: " |\n|\r|\t";
+NAME:   "([a-z]|[A-Z]|_|\?|\$)+";
+SYMBOL: "\:([a-z]|[A-Z]|_)+";
+END: "end";
+
+program: statement+;
+statement: <assignment> | <functiondef> | <expr>;
+assignment: NAME ["="] expr [";"]?;
+functiondef: ["def"] NAME ["("] (param [","])* param? [")"] block;
+
+### Math stuff ###
+expr: xor_expr "|" expr | <xor_expr> | ["("] <expr> [")"];
+xor_expr: and_expr "^" xor_expr | <and_expr>;
+and_expr: shift_expr "&" and_expr | <shift_expr>;
+shift_expr: arith_expr ("<<" arith_expr)+ |  # was (("<<"|">>") arith_expr)*
+			arith_expr (">>" arith_expr)+ |
+			<arith_expr>;
+arith_expr: add |  # was (("+"|"-") term)*
+			subtract |
+			<term>;
+add: term (["+"] expr)+ | term (["+"] term)+ ;
+subtract: term (["-"] expr)+ | term (["-"] term)+;
+term: multiply |  # was (("*"|"/"|"%"|"//") factor)*
+	  divide |
+	  factor ("%" term)+ |
+	  factor ("//" term)+ |
+	  <factor>;
+multiply: factor (["*"] expr)+ | factor (["*"] term)+;
+divide: factor (["/"] expr)+ | factor (["/"] term)+;
+factor: "+" factor | "-" factor | "~" factor | <power>;
+power: <invoke> ("**" factor)? | atom "**" factor | <atom>;
+invoke: atom trailer+;
+
+trailer: <call> | <attraccess>;
+call: ["("] [")"] | ["("] (expr [","])* expr? [")"];
+attraccess: ["."] NAME | <setfn>;
+setfn: ["="] expr;
+
+block: statement* ["end"];
+
+atom: <STRING> | <NUMBER> | <dict> | <array> | <null> |
+	   <true> | <false> |  <NAME> | <SYMBOL>;
+dict: ["{"] (entry [","])* entry ["}"];
+array: ["["] (atom [","])* atom ["]"];
+entry: STRING ["=>"] atom;
+null: ["nil"];
+true: ["true"];
+false: ["false"];
+param: NAME;
